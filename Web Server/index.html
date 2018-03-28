@@ -1,0 +1,191 @@
+<html>
+<head>
+<title>WiFi Deauth</title>
+<style>
+body{
+  margin:5px;
+  color:#00FF00;
+}
+table,td {
+  border: 1px solid #00FF00;
+  border-collapse: collapse;
+}
+td{
+  padding: 7px;
+}
+a{
+  text-decoration: none;
+  color: #ff0000;
+  cursor: pointer;
+}
+button{
+  background-color: #000000; 
+  border: 1px solid #00FF00;
+  color: #00FF00;
+  padding: 7px 14px;
+  text-align: center;
+}
+#div1,#div2{
+  padding:10px;
+  border:1px solid #00FF00;
+}
+#div3{
+  display:none;
+}
+#tb2,#tb2 td{
+  border: 0px solid #000000;
+}
+input{
+background-color: #000000; 
+color:#00FF00;
+margin:5px;
+border: 1px solid #00FF00;
+}
+</style>
+
+<script>
+function getEncryption(num) {
+  if (num == 8) return "WPA*";
+  else if (num == 4) return "WPA2";
+  else if (num == 2) return "WPA";
+  else if (num == 7) return "none";
+  else if (num == 5) return "WEP";
+}
+
+function intToBool(num){
+  if (num == 0) return "False";
+  else if (num == 1) return "True";
+}
+
+
+var cstrt=false;
+function xhr(url,id,b){
+  if(window.XMLHttpRequest)
+    xhttp=new XMLHttpRequest();
+  else
+    xhttp=new ActiveXObject("Microsoft.XMLHTTP");
+  xhttp.onreadystatechange = function() {
+    if(this.readyState == 4 && this.status == 200) {
+      if(b==0){
+
+        var recv=JSON.parse(this.responseText);
+        if(id=="btn1"){
+          if(!cstrt){
+            document.getElementById(id).innerHTML = "SCAN";
+            document.getElementById(id).style.border="1px solid #00FF00";
+            document.getElementById(id).style.color="#00FF00";
+          }
+          document.getElementById(id).name="btn1n";
+        }
+        if(Object.keys(recv.aps).length>0){
+          document.getElementById("tb1").innerHTML="<tr><td>Select</td><td>SSID</td><td>Channel</td><td>RSSI</td><td>Hidden</td><td>MAC</td><td>Encrypt.</td></tr>";
+          for(var i=0;i<Object.keys(recv.aps).length;i++){
+            if(recv.aps[i].se=="1"){
+              document.getElementById("tb1").innerHTML+="<tr style=\"color:#ff0000\"><td><input type=checkbox onclick=xhr(\"apsel?num="+recv.aps[i].i+"\",\"\",0) checked></td><td>"+recv.aps[i].ss+"</td><td>"+recv.aps[i].c+"</td><td>"+recv.aps[i].r+"</td><td>"+intToBool(recv.aps[i].h)+"</td><td>"+recv.aps[i].m+"</td><td>"+getEncryption(recv.aps[i].e)+"</td></tr>";
+            }else{
+              document.getElementById("tb1").innerHTML+="<tr><td><input type=radio onclick=xhr(\"apsel?num="+recv.aps[i].i+"\",\"\",0)></td><td>"+recv.aps[i].ss+"</td><td>"+recv.aps[i].c+"</td><td>"+recv.aps[i].r+"</td><td>"+intToBool(recv.aps[i].h)+"</td><td>"+recv.aps[i].m+"</td><td>"+getEncryption(recv.aps[i].e)+"</td></tr>";
+            }
+          }
+          
+          document.getElementById("div3").style.display="none";
+          for(var i=0;i<Object.keys(recv.aps).length;i++){
+            if(recv.aps[i].se=="1"){
+              document.getElementById("div3").style.display="block";
+              break;
+            }
+          }
+        }
+      
+      }else if(b==1){
+        if(this.responseText=="0"){
+          xhr("wcli","",2);
+        }else if(this.responseText=="1"){
+          alert("Duplicate MAC");
+        }else if(this.responseText=="2"){
+          alert("Limit Exceeded\nOnly 80 can be added.");
+        }
+      }else if(b==2){
+        var recv=JSON.parse(this.responseText);
+        if(Object.keys(recv.wcmac).length>0){
+          document.getElementById("tb3").innerHTML="<tr><td>SNo</td><td>Client MAC</td><td>Delete MAC</td></tr>";
+          for(i=0;i<Object.keys(recv.wcmac).length;i++)
+            document.getElementById("tb3").innerHTML+="<tr><td>"+(i+1)+"</td><td>"+recv.wcmac[i]+"</td><td><a onclick=xhr(\"dlw?num="+i+"\",\"\",2)>delete</a></td></tr>";
+        }else{
+            document.getElementById("tb3").innerHTML="";
+        }
+      }else if(b==3){
+        if(this.responseText=="0"){
+          alert("Attacking...");
+        }
+      }
+    }
+  };
+  xhttp.open("GET", url, true);
+  xhttp.send();
+}
+
+function scanbtn(){
+  if(document.getElementById("btn1").name=="btn1n"){
+    document.getElementById("btn1").name="btn1nd";
+    document.getElementById("div3").style.display="none";
+    document.getElementById("btn1").innerHTML="SCANNING";
+    document.getElementById("btn1").style.border="1px solid #ff0000";
+    document.getElementById("btn1").style.color="#ff0000";
+    xhr("apscan","btn1",0);
+  }
+}
+
+var intrvl;
+function cscan(){
+if(cstrt==false){
+cstrt=true;
+document.getElementById("btn2").innerHTML="CONTINUOUS SCAN STOP";
+document.getElementById("btn2").style.border="1px solid #ff0000";
+document.getElementById("btn2").style.color="#ff0000";
+intrvl=setInterval(function(){document.getElementById("btn1").click();},0);
+}else{
+cstrt=false;
+document.getElementById("btn2").innerHTML="CONTINUOUS SCAN START";
+document.getElementById("btn2").style.border="1px solid #00ff00";
+document.getElementById("btn2").style.color="#00ff00";
+clearInterval(intrvl);
+}
+}
+
+function macvalidation(mac){
+  if(mac.length==12){
+    document.getElementById("wcmac").value="";
+    var fmac=mac.substr(0,2)+":"+mac.substr(2,2)+":"+mac.substr(4,2)+":"+mac.substr(6,2)+":"+mac.substr(8,2)+":"+mac.substr(10,2);
+    xhr("adw?mac="+fmac,"",1);
+  }else{
+    alert("Invalid MAC, Format should be xxxxxxxxxxxx");
+  }
+  
+}
+</script>
+</head>
+
+<body bgcolor="#000000">
+<div id="div1">
+<span style="font-size:20px"><u>Scan</u> <u>for</u> <u>WiFi</u> <u>Access</u> <u>Point</u></span><br><br>
+<button id="btn1" onclick="scanbtn()" name="btn1n">SCAN</button><br><br><button id="btn2" onclick="cscan()">CONTINUOUS SCAN START</button><br><br>
+<table id="tb1">
+</table><br>
+<p>WPA* = WPA/WPA2 auto mode</p>
+</div>
+<div id="div2">
+<span style="font-size:20px"><u>Whitelist</u> <u>for</u> <u>Clients</u></span><br><br>
+<table id="tb2"><tr><td>Client MAC </td><td><input type="text" id="wcmac" onblur="this.value=this.value.toUpperCase()" placeholder="xxxxxxxxxxxx"></td><td><button onclick=macvalidation(document.getElementById("wcmac").value)>ADD</button></td</tr></table>
+<br><br>
+<table id="tb3"></table><br>
+</div><br>
+<div id="div3">
+<center><button style="margin-left:17px" onclick=xhr("attack","",3)>ATTACK</button></center>
+</div3>
+
+<script>
+xhr("wcli","",2);
+</script>
+
+</body>
+</html>
